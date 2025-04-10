@@ -1,0 +1,90 @@
+/* Container for the dashboard page (optional) */
+.dashboard-page {
+  font-family: Arial, sans-serif;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  height: 100vh;
+}
+
+/* Card layout for each course */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px 20px;
+  max-width: 600px;
+  font-family: 'Helvetica Neue', sans-serif;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px; /* space between cards */
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.card-title:hover {
+  text-decoration: underline;
+}
+
+.card-price {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.card-body {
+  color: #444;
+  font-size: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-info {
+  color: #666;
+}
+
+.card-detail .icon {
+  margin-right: 8px;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.enroll-btn {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.enroll-btn:hover {
+  background-color: #155ab6;
+}
+
+.heart {
+  font-size: 20px;
+  color: #888;
+  cursor: pointer;
+}
