@@ -14,9 +14,10 @@ export default function Header() {
 
   return (
     <header className="header-wave-parent relative bg-blue-500 text-white overflow-hidden">
-      <div className="my-header absolute inset-0"></div>
-
-      <div className="relative p-6 flex items-center justify-between">
+      <div
+        className="my-header absolute inset-0 p-6 flex items-center justify-between"
+        style={{ zIndex: 10 }}
+      >
         {/* LEFT: Show the selected account’s name */}
         <div>
           <h1 className="text-2xl font-bold">Student Portal</h1>
@@ -31,7 +32,7 @@ export default function Header() {
             <button
               onClick={() => setShowAccountDropdown(!showAccountDropdown)}
               className="flex items-center space-x-2 text-blue-100 hover:text-blue-300 border border-blue-100 px-3 py-2 rounded"
-            >
+              style={{ zIndex: 10 }}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5"

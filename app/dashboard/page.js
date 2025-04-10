@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useContext } from "react";
 import { useRouter } from "next/navigation";
+import { AppContext } from "@/context/AppContext";
+import FetchCourse from "@/components/FetchCourse";
 
-
-// Helper function: Parse a course name in the format:
-// "May 24-25 Standard First Aid with CPR-C (SFA) - TMU"
-// Returns an object with courseDates, course, and location.
+/**
+ * Parse a course name in the format:
+ * "May 24-25 Standard First Aid with CPR-C (SFA) - TMU"
+ * Returns an object with courseDates, course, and location.
+ */
 function parseCourseName(fullName = "") {
   let splitted = fullName.split(" - ");
   let location = "";
@@ -32,7 +34,7 @@ function parseCourseName(fullName = "") {
     }
   } else if (splitted.length === 2) {
     location = splitted[1];
-    const re = /^([A-Za-z]+\s+\d+-\d+)(\s+.*)?$/;
+    const re = /^([A-Za-z]+\\s+\\d+-\\d+)(\\s+.*)?$/;
     const match = splitted[0].match(re);
     if (match) {
       courseDates = match[1].trim();
@@ -45,25 +47,29 @@ function parseCourseName(fullName = "") {
   return { courseDates, course, location };
 }
 
-// Helper function: Parse a classroom string formatted like "April 12-13 Bronze Harbord"
-// Returns an object with the date and location.
+/**
+ * Parse a classroom string formatted like "April 12-13 Bronze Harbord"
+ * Returns an object with { date, location }
+ */
 function parseBronzeClassroom(classroomString = "") {
   const parts = classroomString.split(" ");
   if (parts.length >= 4) {
-    // Assume that the first two parts form the date and the last part is the location.
     const datePart = parts.slice(0, 2).join(" "); // e.g., "April 12-13"
-    const locationPart = parts[parts.length - 1];   // e.g., "Harbord"
+    const locationPart = parts[parts.length - 1]; // e.g., "Harbord"
     return { date: datePart, location: locationPart };
   }
   return { date: classroomString, location: "" };
 }
 
+/**
+ * Return the correct policy strings for refund/reschedule
+ * based on daysUntilStart and the given policy object
+ */
 function getPolicyForCourse(daysUntilStart, policy) {
   if (!policy) {
     return { refund: "", reschedule: "" };
   }
-  const refundPolicy = policy.refundPolicy;
-  const reschedulePolicy = policy.reschedulePolicy;
+  const { refundPolicy, reschedulePolicy } = policy;
   if (daysUntilStart > 5) {
     return {
       refund: refundPolicy["More than 5 days1*"],
@@ -87,24 +93,37 @@ function getPolicyForCourse(daysUntilStart, policy) {
   }
 }
 
-export default function DashboardPage() {
-  const [accounts, setAccounts] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [batches, setBatches] = useState([]);
-  const [policy, setPolicy] = useState(null);
-  const [error, setError] = useState("");
-  const [selectedEnrollments, setSelectedEnrollments] = useState([]);
-  const [sessionExpired, setSessionExpired] = useState(false);
-  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
-  
-  function handleLogout() {
-    // Clear the userToken cookie
-    document.cookie = "userToken=; path=/; max-age=0;";
-    router.push("/login");
+/**
+ * Format the # of days until a course starts,
+ * returning strings like "Starts in 2 weeks, 4 days"
+ */
+function formatDays(days) {
+  const weeks = Math.floor(days / 7);
+  const remainder = days % 7;
+  if (weeks > 0 && remainder > 0) {
+    return `Starts in ${weeks} weeks, ${remainder} days`;
+  } else if (weeks > 0) {
+    return `Starts in ${weeks} weeks`;
+  } else {
+    return `Starts in ${days} days`;
   }
+}
 
+export default function DashboardPage() {
   const router = useRouter();
 
+  // Pull global data and methods from AppContext
+  const {
+    selectedAccount,
+    batches,
+    policy,
+    error,
+    sessionExpired,
+    selectedEnrollments,
+    setSelectedEnrollments,
+  } = useContext(AppContext);
+
+  // Toggling enrollments example
   function handleToggleEnrollment(id) {
     console.log("Toggling enrollment", id);
     setSelectedEnrollments((prev) => {
@@ -117,93 +136,7 @@ export default function DashboardPage() {
     });
   }
 
-  function formatDays(days) {
-    const weeks = Math.floor(days / 7);
-    const remainder = days % 7;
-    if (weeks > 0 && remainder > 0) {
-      return `Starts in ${weeks} weeks, ${remainder} days`;
-    } else if (weeks > 0) {
-      return `Starts in ${weeks} weeks`;
-    } else {
-      return `Starts in ${days} days`;
-    }
-  }
-
-  useEffect(() => {
-    axios
-      .get("/api/salesforce")
-      .then((res) => {
-        if (res.data.success) {
-          if (res.data.account) {
-            setAccounts([res.data.account]);
-          } else if (res.data.accounts) {
-            setAccounts(res.data.accounts);
-          } else {
-            setAccounts([]);
-          }
-        } else {
-          setError(res.data.message || "Error fetching accounts");
-        }
-      })
-      .catch((err) => setError(err.message));
-  }, []);
-
-  useEffect(() => {
-    const fetchPolicy = () => {
-      axios
-        .get("/api/refund-policy")
-        .then((res) => {
-          console.log("Refund policy response:", res.data);
-          if (res.data.success) {
-            setPolicy(res.data.policy);
-          } else {
-            console.error("Error fetching policy:", res.data.message);
-          }
-        })
-        .catch((err) =>
-          console.error("Error fetching policy:", err.message)
-        );
-    };
-
-    fetchPolicy();
-    const intervalId = setInterval(fetchPolicy, 300000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const handleSelect = (accountId) => {
-    const account = accounts.find((a) => a.Id === accountId);
-    setSelectedAccount(account);
-  };
-
-  useEffect(() => {
-    if (!selectedAccount) return;
-    axios
-      .get(`/api/courseQuery?accountId=${selectedAccount.Id}`)
-      .then((res) => {
-        if (res.data.success) {
-          if (res.data.records.length > 0) {
-            const accountRecord = res.data.records[0];
-            const subRecords = accountRecord.Enrolments ?? [];
-            setBatches(subRecords);
-          } else {
-            setBatches([]);
-          }
-        } else {
-          setError(res.data.message || "Error fetching batch info");
-          setBatches([]);
-        }
-      })
-      .catch((err) => {
-        if (err.response && err.response.status === 401) {
-          setSessionExpired(true);
-        } else {
-          setError(err.message);
-        }
-        setBatches([]);
-      });
-  }, [selectedAccount]);
-
-  // Find the Bronze Cross standard enrollment record (if available)
+  // If there's a Bronze Cross standard enrollment
   const bronzeCrossEnrollment = batches.find(
     (en) =>
       !en.isCombo &&
@@ -212,68 +145,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <>
-      {accounts.length > 1 && (
-        <div className="p-4 border-b border-gray-300 flex justify-end flex-col">
-          <button
-            onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-            className="flex items-center space-x-2 text-blue-500 hover:text-blue-700"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5.121 17.804A9 9 0 1119 8.999m-2.1 5.1A5 5 0 1012 7.999"
-              />
-            </svg>
-            <span>Switch Accounts</span>
-          </button>
-          {showAccountDropdown && (
-            <div className="mt-4 p-4 border rounded bg-white w-full max-w-xs">
-              <h2 className="text-xl font-bold mb-4 text-center">Accounts</h2>
-              <div className="overflow-y-auto max-h-64">
-                {accounts.length === 0 ? (
-                  <p className="text-gray-700 text-center">Loading accounts...</p>
-                ) : (
-                  accounts.map((acc) => (
-                    <div
-                      key={acc.Id}
-                      className={`border rounded-lg p-4 mb-2 cursor-pointer hover:bg-blue-50 ${
-                        selectedAccount && selectedAccount.Id === acc.Id
-                          ? "bg-blue-100 border-blue-400"
-                          : "border-gray-300"
-                      }`}
-                      onClick={() => {
-                        handleSelect(acc.Id);
-                        setShowAccountDropdown(false);
-                      }}
-                    >
-                      <h2 className="text-lg font-medium">{acc.Name}</h2>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="mt-4 border-t pt-4 text-center">
-                <button
-                  onClick={handleLogout}
-                  className="border border-gray-300 text-sm px-4 py-2 rounded hover:bg-gray-100"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      
+    <FetchCourse>
       <div className="p-6">
         {selectedAccount ? (
           <h1 className="text-3xl font-semibold mb-6">
@@ -284,6 +156,7 @@ export default function DashboardPage() {
             Please select a student from the left panel
           </h1>
         )}
+
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
         <div className="flex">
@@ -294,47 +167,59 @@ export default function DashboardPage() {
                   <div>
                     {batches.map((enr) => {
                       console.log("Debug each enrollment:", enr);
+
                       let displayedCourseName = "";
                       let displayedDates = "";
                       let displayedLocation = "";
                       let displayedDaysUntilStart = enr.DaysUntilStart;
 
+                      // If it's a combo enrollment
                       if (enr.isCombo) {
-                        // For Bronze Combo, if the CourseName contains "Bronze Combo"
+                        // For Bronze Combo
                         if (
                           enr.CourseName &&
                           enr.CourseName.includes("Bronze Combo")
                         ) {
                           displayedCourseName = "Bronze Combo";
+                          // If we have a Bronze Cross enrollment
                           if (bronzeCrossEnrollment) {
-                            // Use the Bronze Cross record's Classroom field to parse dates and location
-                            const parsed = parseBronzeClassroom(bronzeCrossEnrollment.Classroom || "");
-                            // Expect parsed.date to be "April 12-13" and parsed.location to be "Harbord"
+                            const parsed = parseBronzeClassroom(
+                              bronzeCrossEnrollment.Classroom || ""
+                            );
                             displayedDates = parsed.date;
                             displayedLocation = parsed.location;
-                            displayedDaysUntilStart = bronzeCrossEnrollment.DaysUntilStart;
+                            displayedDaysUntilStart =
+                              bronzeCrossEnrollment.DaysUntilStart;
                           } else {
-                            // Fallback: parse the combo enrollment's own Classroom field
-                            const parsed = parseBronzeClassroom(enr.Classroom || "");
+                            // fallback to parsing the combo's own Classroom
+                            const parsed = parseBronzeClassroom(
+                              enr.Classroom || ""
+                            );
                             displayedDates = parsed.date;
                             displayedLocation = parsed.location;
                           }
                         } else {
-                          // For other combo enrollments, use default parser on Registration_Name__c
-                          const parsed = parseCourseName(enr.Registration_Name__c || "");
+                          // Other combo enrollments
+                          const parsed = parseCourseName(
+                            enr.Registration_Name__c || ""
+                          );
                           displayedCourseName = parsed.course || "Untitled Course";
                           displayedDates = parsed.courseDates;
                           displayedLocation = parsed.location;
                         }
                       } else {
-                        // For standard enrollments, use parseCourseName on CourseName
-                        const { courseDates, course, location } = parseCourseName(enr.CourseName);
+                        // Standard enrollment
+                        const { courseDates, course, location } = parseCourseName(
+                          enr.CourseName
+                        );
                         displayedCourseName = course || "Untitled Course";
                         displayedDates = courseDates || enr.CourseDates;
                         displayedLocation = location || enr.Location;
                       }
 
-                      const policyData = policy && getPolicyForCourse(displayedDaysUntilStart, policy);
+                      // Refund/reschedule policy info
+                      const policyData =
+                        policy && getPolicyForCourse(displayedDaysUntilStart, policy);
 
                       return (
                         <div
@@ -354,16 +239,14 @@ export default function DashboardPage() {
                                   {displayedDates}
                                 </div>
                                 <div className="flex items-center">
-                                  <span className="mr-2">📍 </span>
+                                  <span className="mr-2">📍</span>
                                   {displayedLocation}
                                 </div>
                                 <div className="flex items-center">
-                                  <span className="mr-2">⏰ </span>
-                                  {displayedDaysUntilStart < 0 ? (
-                                    "Course has passed"
-                                  ) : (
-                                    <span>{formatDays(displayedDaysUntilStart)}</span>
-                                  )}
+                                  <span className="mr-2">⏰</span>
+                                  {displayedDaysUntilStart < 0
+                                    ? "Course has passed"
+                                    : formatDays(displayedDaysUntilStart)}
                                 </div>
                               </div>
                               <div className="flex items-center gap-4 text-xs">
@@ -374,24 +257,47 @@ export default function DashboardPage() {
                                       href="#"
                                       onClick={(e) => {
                                         e.preventDefault();
-                                        console.log("Manually building a new enrollments array for:", enr.Id);
+                                        console.log(
+                                          "Manually building a new enrollments array for:",
+                                          enr.Id
+                                        );
                                         let newEnrollments = [...selectedEnrollments];
-                                        const existingIndex = newEnrollments.findIndex((obj) => obj.Id === enr.Id);
+                                        const existingIndex = newEnrollments.findIndex(
+                                          (obj) => obj.Id === enr.Id
+                                        );
                                         if (existingIndex !== -1) {
-                                          newEnrollments = newEnrollments.filter((obj) => obj.Id !== enr.Id);
+                                          newEnrollments = newEnrollments.filter(
+                                            (obj) => obj.Id !== enr.Id
+                                          );
                                         } else {
                                           newEnrollments.push({ Id: enr.Id });
                                         }
                                         setSelectedEnrollments(newEnrollments);
 
-                                        const courseName = displayedCourseName || enr.CourseName || "Unknown course";
-                                        console.log("Navigating to reschedule with updated enrollments:", {
-                                          oldCourseName: courseName,
-                                          oldCourseId: enr.BatchId,
-                                          newEnrollments,
-                                        });
+                                        const courseName =
+                                          displayedCourseName ||
+                                          enr.CourseName ||
+                                          "Unknown course";
+
+                                        console.log(
+                                          "Navigating to reschedule with updated enrollments:",
+                                          {
+                                            oldCourseName: courseName,
+                                            oldCourseId: enr.BatchId,
+                                            newEnrollments,
+                                          }
+                                        );
+
                                         router.push(
-                                          `/reschedule?oldCourseName=${encodeURIComponent(courseName)}&oldCourseId=${enr.BatchId}&enrollmentId=${enr.Id}&enrollmentIds=${JSON.stringify(newEnrollments)}`
+                                          `/reschedule?oldCourseName=${encodeURIComponent(
+                                            courseName
+                                          )}&oldCourseId=${
+                                            enr.BatchId
+                                          }&enrollmentId=${
+                                            enr.Id
+                                          }&enrollmentIds=${JSON.stringify(
+                                            newEnrollments
+                                          )}`
                                         );
                                       }}
                                       className="text-blue-500 underline"
@@ -433,10 +339,13 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
       {sessionExpired && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-md shadow-md">
-            <p className="mb-4 text-lg text-center">Your session has expired. Please log in again.</p>
+            <p className="mb-4 text-lg text-center">
+              Your session has expired. Please log in again.
+            </p>
             <button
               onClick={() => router.push("/login")}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -446,6 +355,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </>
+    </FetchCourse>
   );
 }

@@ -1,37 +1,23 @@
-"use client"; 
-// "use client" so we can use hooks (useState, useEffect) in our context
-
+"use client";
 import React, { createContext, useState, useEffect } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export const AppContext = createContext(null);
 
 export default function AppProvider({ children }) {
   const router = useRouter();
 
-  // Move the same state variables from DashboardPage into here
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [batches, setBatches] = useState([]);
   const [policy, setPolicy] = useState(null);
   const [error, setError] = useState("");
-  const [selectedEnrollments, setSelectedEnrollments] = useState([]);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [selectedEnrollments, setSelectedEnrollments] = useState([]);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
 
-  // Example of your handleLogout, but inside the context
-  function handleLogout() {
-    document.cookie = "userToken=; path=/; max-age=0;";
-    router.push("/login");
-  }
-
-  function handleSelect(accountId) {
-    const account = accounts.find((a) => a.Id === accountId);
-    setSelectedAccount(account);
-  }
-
-  // Similar to your existing code, fetch accounts on mount
+  // 1) Fetch accounts globally on mount
   useEffect(() => {
     axios
       .get("/api/salesforce")
@@ -41,8 +27,6 @@ export default function AppProvider({ children }) {
             setAccounts([res.data.account]);
           } else if (res.data.accounts) {
             setAccounts(res.data.accounts);
-          } else {
-            setAccounts([]);
           }
         } else {
           setError(res.data.message || "Error fetching accounts");
@@ -51,38 +35,30 @@ export default function AppProvider({ children }) {
       .catch((err) => setError(err.message));
   }, []);
 
-  // Example: fetch policy
-  useEffect(() => {
-    const fetchPolicy = () => {
-      axios
-        .get("/api/refund-policy")
-        .then((res) => {
-          if (res.data.success) {
-            setPolicy(res.data.policy);
-          } else {
-            console.error("Error fetching policy:", res.data.message);
-          }
-        })
-        .catch((err) => console.error("Error fetching policy:", err.message));
-    };
-    fetchPolicy();
-    const intervalId = setInterval(fetchPolicy, 300000);
-    return () => clearInterval(intervalId);
-  }, []);
+  // 2) handleSelect: set the new account as selected
+  function handleSelect(accountId) {
+    const newSelected = accounts.find((a) => a.Id === accountId);
+    setSelectedAccount(newSelected || null);
+  }
 
-  // Example: if selectedAccount changes, fetch relevant data
+  // 3) If selectedAccount changes, fetch that account’s courses
   useEffect(() => {
-    if (!selectedAccount) return;
+    if (!selectedAccount) {
+      setBatches([]);
+      return;
+    }
+  
     axios
       .get(`/api/courseQuery?accountId=${selectedAccount.Id}`)
       .then((res) => {
         if (res.data.success) {
-          if (res.data.records.length > 0) {
+          if (res.data.records?.length > 0) {
             const accountRecord = res.data.records[0];
-            const subRecords = accountRecord.Enrolments ?? [];
-            setBatches(subRecords);
+            const merged = accountRecord.Enrolments || [];
+            setBatches(merged);
           } else {
             setBatches([]);
+            setError(res.data.message || "No course batches found");
           }
         } else {
           setError(res.data.message || "Error fetching batch info");
@@ -99,20 +75,45 @@ export default function AppProvider({ children }) {
       });
   }, [selectedAccount]);
 
-  // Provide these values/functions to children
+  // 4) Optionally fetch refund policy
+  useEffect(() => {
+    axios
+      .get("/api/refund-policy")
+      .then((res) => {
+        if (res.data.success) {
+          setPolicy(res.data.policy);
+        } else {
+          console.error("Error fetching policy:", res.data.message);
+        }
+      })
+      .catch((err) => console.error("Error fetching policy:", err.message));
+  }, []);
+
+  // 5) handleLogout if needed
+  function handleLogout() {
+    document.cookie = "userToken=; path=/; max-age=0;";
+    router.push("/login");
+  }
+
   const contextValue = {
     accounts,
+    setAccounts,
     selectedAccount,
+    setSelectedAccount,
+    batches,
+    setBatches,
+    policy,
+    setPolicy,
     error,
+    setError,
+    sessionExpired,
+    setSessionExpired,
+    selectedEnrollments,
+    setSelectedEnrollments,
     showAccountDropdown,
     setShowAccountDropdown,
-    batches,
-    policy,
-    selectedEnrollments,
-    sessionExpired,
     handleLogout,
     handleSelect,
-    setSelectedEnrollments,
   };
 
   return (
