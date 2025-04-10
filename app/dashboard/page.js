@@ -95,6 +95,13 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [selectedEnrollments, setSelectedEnrollments] = useState([]);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  
+  function handleLogout() {
+    // Clear the userToken cookie
+    document.cookie = "userToken=; path=/; max-age=0;";
+    router.push("/login");
+  }
 
   const router = useRouter();
 
@@ -206,6 +213,65 @@ export default function DashboardPage() {
 
   return (
     <Layout accounts={accounts} onSelectAccount={handleSelect}>
+      {accounts.length > 1 && (
+        <div className="p-4 border-b border-gray-300 flex justify-end flex-col">
+          <button
+            onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+            className="flex items-center space-x-2 text-blue-500 hover:text-blue-700"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5.121 17.804A9 9 0 1119 8.999m-2.1 5.1A5 5 0 1012 7.999"
+              />
+            </svg>
+            <span>Switch Accounts</span>
+          </button>
+          {showAccountDropdown && (
+            <div className="mt-4 p-4 border rounded bg-white w-full max-w-xs">
+              <h2 className="text-xl font-bold mb-4 text-center">Accounts</h2>
+              <div className="overflow-y-auto max-h-64">
+                {accounts.length === 0 ? (
+                  <p className="text-gray-700 text-center">Loading accounts...</p>
+                ) : (
+                  accounts.map((acc) => (
+                    <div
+                      key={acc.Id}
+                      className={`border rounded-lg p-4 mb-2 cursor-pointer hover:bg-blue-50 ${
+                        selectedAccount && selectedAccount.Id === acc.Id
+                          ? "bg-blue-100 border-blue-400"
+                          : "border-gray-300"
+                      }`}
+                      onClick={() => {
+                        handleSelect(acc.Id);
+                        setShowAccountDropdown(false);
+                      }}
+                    >
+                      <h2 className="text-lg font-medium">{acc.Name}</h2>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 border-t pt-4 text-center">
+                <button
+                  onClick={handleLogout}
+                  className="border border-gray-300 text-sm px-4 py-2 rounded hover:bg-gray-100"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       <div className="p-6">
         {selectedAccount ? (
           <h1 className="text-3xl font-semibold mb-6">
