@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import Layout from "@/components/Layout";
 
 // Helper function: Parse a course name in the format:
 // "May 24-25 Standard First Aid with CPR-C (SFA) - TMU"
@@ -212,7 +211,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <Layout accounts={accounts} onSelectAccount={handleSelect}>
+    <>
       {accounts.length > 1 && (
         <div className="p-4 border-b border-gray-300 flex justify-end flex-col">
           <button
@@ -444,6 +443,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
