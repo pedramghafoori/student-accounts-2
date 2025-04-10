@@ -3,6 +3,7 @@ import '../app/globals.css';
 import React from "react";
 import FooterMenu from "../components/FooterMenu";
 import Header from "../components/Header";
+import AppProvider from "../context/AppContext";
 
 export const metadata = {
   title: 'Self-Serve Portal',
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       
       <body>
+      <AppProvider>
       <Header />
         <div className="min-h-screen flex flex-col">
           {/* Main content */}
@@ -21,6 +23,7 @@ export default function RootLayout({ children }) {
           {/* Footer menu at the bottom */}
           <FooterMenu />
         </div>
+        </AppProvider>
       </body>
     </html>
   );

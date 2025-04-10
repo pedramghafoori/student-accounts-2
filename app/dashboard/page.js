@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
+
 // Helper function: Parse a course name in the format:
 // "May 24-25 Standard First Aid with CPR-C (SFA) - TMU"
 // Returns an object with courseDates, course, and location.
@@ -271,6 +272,8 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      
       <div className="p-6">
         {selectedAccount ? (
           <h1 className="text-3xl font-semibold mb-6">

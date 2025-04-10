@@ -1,37 +1,44 @@
 "use client";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
+import { AppContext } from "../context/AppContext";
 
-const Header = ({ headerTitle, currentAccountName, accounts, onSelectAccount }) => {
-  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
-
-  function handleLogout() {
-    document.cookie = "userToken=; path=/; max-age=0;";
-    window.location.href = "/login";
-  }
+export default function Header() {
+  const {
+    accounts,
+    selectedAccount,
+    showAccountDropdown,
+    setShowAccountDropdown,
+    handleLogout,
+    handleSelect,
+  } = useContext(AppContext);
 
   return (
-    <header className="relative bg-blue-500 text-white overflow-hidden header-wave-parent">
-      {/* Add a new empty div that the CSS wave background will target */}
-      <div className="my-header"></div>
+    <header className="header-wave-parent relative bg-blue-500 text-white overflow-hidden">
+      <div className="my-header absolute inset-0"></div>
 
-      {/* Header content */}
-      <div className="relative p-6 pt-10 md:pt-14">
-        <h1 className="text-2xl md:text-3xl font-bold">{headerTitle}</h1>
-        <p className="mt-2 text-lg md:text-xl font-semibold">{currentAccountName}</p>
+      <div className="relative p-6 flex items-center justify-between">
+        {/* LEFT: Show the selected account’s name */}
+        <div>
+          <h1 className="text-2xl font-bold">Student Portal</h1>
+          {selectedAccount && (
+            <p className="text-lg font-semibold">{selectedAccount.Name}</p>
+          )}
+        </div>
 
-        {accounts && accounts.length > 1 && (
-          <div className="absolute top-6 right-6 flex flex-col items-end">
+        {/* RIGHT: Switch Accounts button */}
+        {accounts.length > 1 && (
+          <div className="relative">
             <button
               onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-              className="flex items-center space-x-2 text-blue-100 hover:text-blue-300"
+              className="flex items-center space-x-2 text-blue-100 hover:text-blue-300 border border-blue-100 px-3 py-2 rounded"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
                 strokeWidth="2"
+                stroke="currentColor"
               >
                 <path
                   strokeLinecap="round"
@@ -41,15 +48,16 @@ const Header = ({ headerTitle, currentAccountName, accounts, onSelectAccount }) 
               </svg>
               <span>Switch Accounts</span>
             </button>
+
             {showAccountDropdown && (
-              <div className="mt-2 p-4 border rounded bg-white text-black w-48">
+              <div className="absolute right-0 mt-2 p-4 border rounded bg-white text-black w-48">
                 <h2 className="text-xl font-bold mb-2 text-center">Accounts</h2>
                 <div className="overflow-y-auto max-h-64">
                   {accounts.map((acc) => (
                     <div
                       key={acc.Id}
                       onClick={() => {
-                        if (onSelectAccount) onSelectAccount(acc.Id);
+                        handleSelect(acc.Id);
                         setShowAccountDropdown(false);
                       }}
                       className="border rounded-lg p-2 mb-2 cursor-pointer hover:bg-blue-50"
@@ -73,6 +81,4 @@ const Header = ({ headerTitle, currentAccountName, accounts, onSelectAccount }) 
       </div>
     </header>
   );
-};
-
-export default Header;
+}
